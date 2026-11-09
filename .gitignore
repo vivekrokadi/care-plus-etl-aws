@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+.env
+raw_data/
+date_tracker.txt
+*.parquet
+.vscode/
