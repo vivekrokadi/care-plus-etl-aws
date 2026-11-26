@@ -122,7 +122,6 @@ careplus-etl-aws/
 ├── sql/
 │   ├── create_tables.sql              # Redshift DDL schemas
 │   
-├── 
 ├── requirements.txt
 └── .gitignore
 ```
@@ -133,8 +132,8 @@ careplus-etl-aws/
 
 1. **Clone & install dependencies**
    ```bash
-   git clone [https://github.com/](https://github.com/)<your-username>/careplus-etl-aws.git
-   cd careplus-etl-aws
+   git clone https://github.com/vivekrokadi/care-plus-etl-aws.git
+   cd care-plus-etl-aws
    python -m venv venv
    venv\Scripts\activate 
    pip install -r requirements.txt
