@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-S3_BUCKET = "care-plus-data-lake"
+S3_BUCKET = "care-plus-datalake"
 S3_PREFIX = "support-logs/raw/"
 DATE_TRACKER_FILE = "../../log_date_tracker.txt"
 LOGS_FOLDER = "../../raw_data/day-wise-logs-data/"

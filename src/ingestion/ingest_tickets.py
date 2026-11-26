@@ -22,7 +22,7 @@ AWS_CONFIG = {
     'region_name' : os.getenv('AWS_REGION')
 }
 
-S3_BUCKET = 'care-plus-data-lake'
+S3_BUCKET = 'care-plus-datalake'
 S3_PREFIX = 'support-tickets/raw/'
 DATE_TRACKER_FILE = '../../date_tracker.txt'
 

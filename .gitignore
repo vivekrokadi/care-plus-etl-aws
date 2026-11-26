@@ -3,5 +3,6 @@ __pycache__/
 .env
 raw_data/
 date_tracker.txt
+log_date_tracker.txt
 *.parquet
 .vscode/
