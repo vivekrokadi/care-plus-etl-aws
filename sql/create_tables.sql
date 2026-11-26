@@ -1,6 +1,5 @@
--- Support Logs:
-
-CREATE TABLE public.support_logs (
+-- 1. Support Logs: Table DDL, COPY & Verify
+CREATE TABLE IF NOT EXISTS public.support_logs (
     timestamp       TIMESTAMP,
     log_level       VARCHAR(20),
     component       VARCHAR(100),
@@ -16,39 +15,35 @@ CREATE TABLE public.support_logs (
     debug           VARCHAR(1000)
 );
 
--- Insert the data
 COPY public.support_logs
 FROM 's3://care-plus-datalake/support-logs/processed/'
-IAM_ROLE 'arn:aws:iam::009839735254:role/service-role/AmazonRedshift-CommandsAccessRole-20261123T173326'
+IAM_ROLE 'arn:aws:iam::<AWS_ACCOUNT_ID>:role/service-role/<REDSHIFT_ACCESS_ROLE>'
 FORMAT AS PARQUET
 REGION 'ap-southeast-2';
 
--- Test the data
-SELECT count(*) FROM public.support_logs;
-Select * From public.support_logs;
+SELECT COUNT(*) FROM public.support_logs;
+SELECT * FROM public.support_logs LIMIT 10;
 
 
 
---Support Tickets:
-CREATE TABLE support_tickets (
-    ticket_id VARCHAR(50),
-    created_at TIMESTAMP,
-    resolved_at TIMESTAMP,
-    agent VARCHAR(100),
-    priority VARCHAR(20),
+-- 2. Support Tickets: Table DDL, COPY & Verify
+CREATE TABLE IF NOT EXISTS public.support_tickets (
+    ticket_id        VARCHAR(50),
+    created_at       TIMESTAMP,
+    resolved_at      TIMESTAMP,
+    agent            VARCHAR(100),
+    priority         VARCHAR(20),
     num_interactions BIGINT,
-    issuecat VARCHAR(100),
-    channel VARCHAR(50),
-    status VARCHAR(20)
+    issuecat         VARCHAR(100),
+    channel          VARCHAR(50),
+    status           VARCHAR(20)
 );
 
--- Insert the data
 COPY public.support_tickets
 FROM 's3://care-plus-datalake/support-tickets/processed/'
-IAM_ROLE 'arn:aws:iam::009839735254:role/service-role/AmazonRedshift-CommandsAccessRole-20261123T173326'
+IAM_ROLE 'arn:aws:iam::<AWS_ACCOUNT_ID>:role/service-role/<REDSHIFT_ACCESS_ROLE>'
 FORMAT AS PARQUET
 REGION 'ap-southeast-2';
 
--- Test the data
-SELECT count(*) FROM public.support_tickets;
-Select * From public.support_tickets;
+SELECT COUNT(*) FROM public.support_tickets;
+SELECT * FROM public.support_tickets LIMIT 10;

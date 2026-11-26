@@ -31,7 +31,7 @@
             ▼                                    ▼
 ┌────────────────────────────────────────────────────────────────┐
 │                Amazon S3 — Raw Layer (Bronze)                  │
-│      raw/tickets/*.csv              support-logs/raw/*.log     │
+│   support-tickets/raw/*.csv         support-logs/raw/*.log     │
 └──────────────┬──────────────────────────────────┬──────────────┘
                │ S3 ObjectCreated Trigger         │ S3 ObjectCreated Trigger
                ▼                                  ▼
@@ -46,10 +46,11 @@
                ▼                                  ▼
 ┌────────────────────────────────────────────────────────────────┐
 │             Amazon S3 — Processed Layer (Silver)               │
-│  processed/tickets/*.parquet   support-logs/processed/*.parquet│
+│ support-tickets/processed/*.parquet                            │
+│ support-logs/processed/*.parquet                               │
 └──────────────────────────────┬─────────────────────────────────┘
-                               │ S3 Event Trigger (lambda_load_redshift.py)
-                               │ Bulk Load via Redshift COPY (psycopg2)
+                               │ Bulk Load via Redshift COPY
+                               │ (sql/create_tables.sql)
                                ▼
 ┌────────────────────────────────────────────────────────────────┐
 │          Amazon Redshift Serverless — Analytics (Gold)         │
@@ -75,10 +76,10 @@
 
 ## Key Features & Transformations
 
-* **Incremental Daily Ingestion:** Stateful Python scripts track high-water marks (`date_tracker.txt`, `log_date_tracker.txt`) and stream daily deltas from MySQL and local server logs straight to S3 in memory (`StringIO`).
+* **Incremental Daily Ingestion:** Stateful Python scripts track high-water marks (`date_tracker.txt`, `log_date_tracker.txt`) and stream daily deltas from MySQL and local server logs directly to S3 in memory (`StringIO`).
 * **Serverless Log Transformation (`lambda_process_logs.py`):** Automatically triggered by S3 uploads to parse multi-line `.log` files with Regex, normalize malformed log levels (`INF0` → `INFO`, `DEBG` → `DEBUG`, `warnING` → `WARNING`, `EROR` → `ERROR`), drop `trace_id`, filter negative response times, deduplicate rows, and write `datetime64[ms]` Parquet files in memory (`BytesIO`).
-* **Serverless Ticket Transformation (`lambda_process_tickets.py`):** Event-driven AWS Lambda function that cleans raw support ticket CSVs—fixing priority typos (`Lw` → `Low`, `Hgh` → `High`, `Medum` → `Medium`), dropping null `ticket_id` rows and empty columns (`agent_feedback`), filtering corrupted negative interactions (`-999999`), standardizing timestamps, and saving compressed Parquet files to S3.
-* **Automated Warehouse Loading (`lambda_load_redshift.py`):** Triggers on new Parquet files in S3 and bulk-loads them into Amazon Redshift Serverless using `psycopg2` and the native `COPY` command.
+* **Serverless Ticket Transformation (`lambda_process_tickets.py`):** Event-driven AWS Lambda function that cleans raw support ticket CSVs—fixing priority typos (`Lw` → `Low`, `Hgh` → `High`, `Medum` → `Medium`), dropping null `ticket_id` rows and empty columns (`agent_feedback`), filtering corrupted negative interactions (`-999999`), standardizing timestamps, and writing compressed Parquet files to S3.
+* **Warehouse Schema & Bulk Loading (`sql/create_tables.sql`):** Defines Redshift target schemas (`public.support_tickets` and `public.support_logs`) and bulk-loads Snappy-compressed Parquet files directly from S3 using native parallel `COPY` commands.
 
 ---
 
@@ -89,8 +90,8 @@
   <img src="docs/dashboard_tickets.png" alt="CarePlus Ticket Insights Dashboard" width="100%" />
 </p>
 
-* Tracks **206 total tickets** (**164 Resolved**, **34 Open**, **8 Escalated**) across **5 support agents**.
-* Monitors **4.45 avg interactions** and **1,039 avg resolution minutes** across cleaned `High`, `Medium`, and `Low` priorities.
+* Tracks **206 total tickets** (**164 Resolved**, **34 Open**, **8 Escalated**) across **5 support agents** with a **Resolved vs. Total Tickets** progress gauge.
+* Monitors **4.45 avg interactions** and **1,039 avg resolution minutes** broken down by issue category (`Payment Failure`, `Feature Request`, `Bug Report`, `Account Locked`, `Login Issue`) and cleaned priorities (`High`, `Medium`, `Low`).
 * Highlights channel efficiency—**Phone (84.00%)** and **Email (82.54%)** lead resolution rates, while **Chat** records the highest escalation rate (**7.84%**).
 
 ### 2. CarePlus Support Logs
@@ -106,7 +107,7 @@
 ## Project Structure
 
 ```text
-careplus-etl-aws/
+care-plus-etl-aws/
 ├── docs/
 │   ├── dashboard_tickets.png          # Ticket Insights Power BI screenshot
 │   └── dashboard_logs.png             # Support Logs Power BI screenshot
@@ -114,14 +115,11 @@ careplus-etl-aws/
 │   ├── ingestion/
 │   │   ├── ingest_tickets.py          # Incremental MySQL -> S3 raw CSV
 │   │   └── ingest_logs.py             # Incremental local logs -> S3 raw
-│   ├── transformation/
-│   │   ├── lambda_process_logs.py     # AWS Lambda: Regex log ETL -> Parquet
-│   │   └── lambda_process_tickets.py  # AWS Lambda: Ticket cleaning -> Parquet
-│   └── loading/
-│       └── lambda_load_redshift.py    # AWS Lambda: S3 Parquet -> Redshift COPY
+│   └── transformation/
+│       ├── lambda_process_logs.py     # AWS Lambda: Regex log ETL -> Parquet
+│       └── lambda_process_tickets.py  # AWS Lambda: Ticket cleaning -> Parquet
 ├── sql/
-│   ├── create_tables.sql              # Redshift DDL schemas
-│   
+│   └── create_tables.sql              # Redshift DDL schemas & S3 Parquet COPY commands
 ├── requirements.txt
 └── .gitignore
 ```
@@ -132,10 +130,10 @@ careplus-etl-aws/
 
 1. **Clone & install dependencies**
    ```bash
-   git clone https://github.com/vivekrokadi/care-plus-etl-aws.git
+   git clone [https://github.com/vivekrokadi/care-plus-etl-aws.git](https://github.com/vivekrokadi/care-plus-etl-aws.git)
    cd care-plus-etl-aws
    python -m venv venv
-   venv\Scripts\activate 
+   venv\Scripts\activate  # macOS/Linux: source venv/bin/activate
    pip install -r requirements.txt
    ```
 
@@ -143,8 +141,8 @@ careplus-etl-aws/
    ```env
    AWS_ACCESS_KEY_ID="your_access_key"
    AWS_SECRET_ACCESS_KEY="your_secret_key"
-   AWS_REGION="ap-south-1"
-   S3_BUCKET="careplus-data-store"
+   AWS_REGION="ap-southeast-2"
+   S3_BUCKET="care-plus-datalake"
 
    MYSQL_HOST="localhost"
    MYSQL_USER="your_mysql_user"
@@ -154,9 +152,11 @@ careplus-etl-aws/
 
 3. **Deploy & execute**
    * Deploy `lambda_process_logs.py` and `lambda_process_tickets.py` on AWS Lambda (`Python 3.14`, `x86_64`, `256 MB` RAM, `AWSSDKPandas-Python314` layer) with S3 `ObjectCreated` triggers.
-   * Run `sql/create_tables.sql` in Amazon Redshift Serverless and deploy `lambda_load_redshift.py`.
    * Run the incremental ingestion scripts:
      ```bash
      python src/ingestion/ingest_tickets.py
      python src/ingestion/ingest_logs.py
      ```
+   * Run `sql/create_tables.sql` in the Amazon Redshift Serverless Query Editor (replacing `<AWS_ACCOUNT_ID>` and `<REDSHIFT_ACCESS_ROLE>` with your IAM role ARN) to create the tables and bulk-load the processed Parquet files from S3.
+
+---
